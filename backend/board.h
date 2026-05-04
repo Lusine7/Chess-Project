@@ -3,7 +3,6 @@
 
 #include <string.h>
 
-// Piece types
 #define EMPTY  0
 #define PAWN   1
 #define KNIGHT 2
@@ -12,17 +11,31 @@
 #define QUEEN  5
 #define KING   6
 
-// Colors
 #define WHITE  1
 #define BLACK -1
 
-// Structure representing the chess board state
 typedef struct {
-    int squares[8][8]; // 2D array of squares: positive for White, negative for Black
-    int turn;          // Whose turn it is: WHITE or BLACK
+    int squares[8][8];
+    int turn;
+
+    int white_castle_k;
+    int white_castle_q;
+    int black_castle_k;
+    int black_castle_q;
+
+    int ep_rank;
+    int ep_file;
+
+    int halfmove_clock;
+    int fullmove_number;
 } Board;
 
-// Initializes the board with the starting position
 void board_init(Board *b);
+void copy_board(Board *dst, const Board *src);
+int  board_color(int piece);
+int  board_type(int piece);
+void sq_to_str(int rank, int file, char *out);
+int  str_to_rank(const char *sq);
+int  str_to_file(const char *sq);
 
 #endif /* BOARD_H */
