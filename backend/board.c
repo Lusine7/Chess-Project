@@ -21,7 +21,7 @@ void board_init(Board *b) {
     for (int f = 0; f < 8; f++)
         b->squares[6][f] = -PAWN;
 
-    /* Black back rank (rank index 7 = chess rank 😍 */
+    /* Black back rank (rank index 7 = chess rank 8) */
     b->squares[7][0] = -ROOK;
     b->squares[7][1] = -KNIGHT;
     b->squares[7][2] = -BISHOP;
