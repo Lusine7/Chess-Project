@@ -1,7 +1,7 @@
 #include "ai.h"
 #include "eval.h"
 
-int ai_depth = 2;  /* start shallow while we test */
+int ai_depth = 4;  /* start shallow while we test */
 
 static int minimax(Board *b, int depth, int maximizing) {
     if (depth == 0)
