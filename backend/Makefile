@@ -1,7 +1,7 @@
 CC     = gcc
 CFLAGS = -Wall -Wextra -std=c11 -O2
 
-SRC = board.c moves.c main.c
+SRC = board.c moves.c eval.c main.c
 OBJ = $(SRC:.c=.o)
 
 chess: $(OBJ)
