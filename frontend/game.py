@@ -64,6 +64,7 @@ class GameState:
         rank = int(sq[1]) - 1
         return rank, file
 
+
     def _is_own_piece(self, piece: str) -> bool:
         if not piece:
             return False
