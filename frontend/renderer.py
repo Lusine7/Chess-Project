@@ -1,10 +1,49 @@
 """
-renderer.py — Pygame chess board renderer (squares + overlays).
-Piece images added in next commit.
+renderer.py — Pygame-based chess board renderer.
+Pieces are rendered from PNG images when available falling back to pygame-primitive drawing otherwise.
 """
 
+import os
 import pygame
 from typing import Optional
+
+# ------------------------------------------------------------------ #
+#  Piece image loading (module-level, initialised once)               #
+# ------------------------------------------------------------------ #
+_PIECE_IMAGES: dict = {}   # piece_char -> raw Surface (original size)
+_IMAGES_LOADED = False
+
+# Map piece characters to the filenames produced by setup_pieces.py
+_PIECE_FILENAMES = {
+    'K': 'wK', 
+    'Q': 'wQ', 
+    'R': 'wR', 
+    'B': 'wB', 
+    'N': 'wN', 
+    'P': 'wP',
+    'k': 'bK', 
+    'q': 'bQ', 
+    'r': 'bR', 
+    'b': 'bB', 
+    'n': 'bN', 
+    'p': 'bP',
+}
+
+
+def _load_piece_images() -> None:
+    """Load PNG pieces from frontend/assets/pieces/ (if they exist)."""
+    global _PIECE_IMAGES, _IMAGES_LOADED
+    if _IMAGES_LOADED:
+        return
+    _IMAGES_LOADED = True
+    assets_dir = os.path.join(os.path.dirname(__file__), "assets", "pieces")
+    for char, stem in _PIECE_FILENAMES.items():
+        path = os.path.join(assets_dir, f"{stem}.png")
+        if os.path.isfile(path):
+            try:
+                _PIECE_IMAGES[char] = pygame.image.load(path).convert_alpha()
+            except Exception:
+                pass  # silently fall back to primitive drawing
 
 # ------------------------------------------------------------------ #
 #  Colour palette                                                      #
@@ -29,23 +68,39 @@ PROMO_BDR  = ( 80,  80,  80)
 STATUS_HEIGHT = 48
 PROMO_PIECES  = ['q', 'r', 'b', 'n']
 
+def _make_piece_surface(piece_char: str, sq: int) -> pygame.Surface:
+    """Return a surface with the piece image scaled to sq x sq pixels."""
+    img    = _PIECE_IMAGES.get(piece_char)
+    margin = max(3, sq // 14)
+    inner  = sq - 2 * margin
+    surf   = pygame.Surface((sq, sq), pygame.SRCALPHA)
+    surf.fill((0, 0, 0, 0))
+    if img:
+        scaled = pygame.transform.smoothscale(img, (inner, inner))
+        surf.blit(scaled, (margin, margin))
+    return surf
+
+
+# ================================================================== #
+#  Renderer                                                            #
+# ================================================================== #
 
 class Renderer:
-    def __init__(self, screen: pygame.Surface, board_size: int,
-                 flipped: bool = False):
+    def __init__(self, screen: pygame.Surface, board_size: int, flipped: bool = False):
         self.screen     = screen
         self.board_size = board_size
         self.sq_size    = board_size // 8
-        self.flipped    = flipped
-        self._overlay   = pygame.Surface((board_size, board_size),
-                                          pygame.SRCALPHA)
+        self.flipped    = flipped          # True when player plays as black
+        self._cache: dict[str, pygame.Surface] = {}
+        self._overlay   = pygame.Surface((board_size, board_size), pygame.SRCALPHA)
+        _load_piece_images()               # no-op if already done
         self._init_fonts()
 
     def _init_fonts(self):
-        self.font_coord   = pygame.font.SysFont("consolas", 13)
-        self.font_status  = pygame.font.SysFont("sans", 22, bold=True)
-        self.font_overlay = pygame.font.SysFont("sans", 44, bold=True)
-        self.font_promo   = pygame.font.SysFont("sans", 18, bold=True)
+        self.font_coord  = pygame.font.SysFont("consolas",  13)
+        self.font_status = pygame.font.SysFont("sans",      22, bold=True)
+        self.font_overlay= pygame.font.SysFont("sans",      44, bold=True)
+        self.font_promo  = pygame.font.SysFont("sans",      18, bold=True)
 
     # ---------------------------------------------------------------- #
     #  Coordinate helpers                                               #
@@ -53,15 +108,19 @@ class Renderer:
 
     def sq_to_px(self, rank: int, file: int):
         if self.flipped:
+            # Black at bottom: rank 7 → row 0, file 7 → col 0
             return (7 - file) * self.sq_size, rank * self.sq_size
-        return file * self.sq_size, (7 - rank) * self.sq_size
+        else:
+            # White at bottom: rank 0 → row 7, file 0 → col 0
+            return file * self.sq_size, (7 - rank) * self.sq_size
 
     def px_to_sq(self, px: int, py: int) -> Optional[tuple]:
         if not (0 <= px < self.board_size and 0 <= py < self.board_size):
             return None
         if self.flipped:
             return py // self.sq_size, 7 - px // self.sq_size
-        return 7 - py // self.sq_size, px // self.sq_size
+        else:
+            return 7 - py // self.sq_size, px // self.sq_size
 
     # ---------------------------------------------------------------- #
     #  Main draw                                                        #
@@ -78,10 +137,14 @@ class Renderer:
         elif game_over:
             self._draw_overlay(game_over)
 
+    # ---------------------------------------------------------------- #
+    #  Board                                                            #
+    # ---------------------------------------------------------------- #
+
     def _draw_board(self, board_state, selected_sq, legal_dests,
                     last_move, in_check_sq):
-        sq = self.sq_size
-        ov = self._overlay
+        sq  = self.sq_size
+        ov  = self._overlay
         ov.fill((0, 0, 0, 0))
 
         for rank in range(8):
@@ -106,26 +169,22 @@ class Renderer:
 
         self.screen.blit(ov, (0, 0))
 
-        # pieces — text fallback for now
         for rank in range(8):
             for file in range(8):
                 p = board_state[rank][file]
                 if p:
-                    self._draw_piece_text(p, rank, file)
+                    self._blit_piece(p, rank, file)
 
         self._draw_coords()
 
-    def _draw_piece_text(self, piece_char: str, rank: int, file: int):
-        x, y = self.sq_to_px(rank, file)
-        sq   = self.sq_size
-        font = pygame.font.SysFont("segoeuisymbol", sq // 2, bold=True)
-        col  = (255, 255, 255) if piece_char.isupper() else (30, 30, 30)
-        surf = font.render(piece_char.upper(), True, col)
-        self.screen.blit(surf, (x + (sq - surf.get_width())  // 2,
-                                y + (sq - surf.get_height()) // 2))
+    def _blit_piece(self, piece_char: str, rank: int, file: int):
+        if piece_char not in self._cache:
+            self._cache[piece_char] = _make_piece_surface(piece_char, self.sq_size)
+        surf = self._cache[piece_char]
+        self.screen.blit(surf, self.sq_to_px(rank, file))
 
     def _draw_coords(self):
-        sq    = self.sq_size
+        sq = self.sq_size
         files = "hgfedcba" if self.flipped else "abcdefgh"
         for i in range(8):
             fl = self.font_coord.render(files[i], True, (80, 80, 80))
@@ -135,6 +194,10 @@ class Renderer:
             rk = self.font_coord.render(rank_num, True, (80, 80, 80))
             self.screen.blit(rk, (3, i*sq + 3))
 
+    # ---------------------------------------------------------------- #
+    #  Status bar                                                       #
+    # ---------------------------------------------------------------- #
+
     def _draw_status_bar(self, status_text: str):
         bar_y = self.board_size
         pygame.draw.rect(self.screen, BG_STATUS,
@@ -142,10 +205,13 @@ class Renderer:
         txt = self.font_status.render(status_text, True, TEXT_STATUS)
         self.screen.blit(txt, (12, bar_y + (STATUS_HEIGHT - txt.get_height()) // 2))
 
+    # ---------------------------------------------------------------- #
+    #  Promotion dialog                                                 #
+    # ---------------------------------------------------------------- #
+
     PROMO_NAMES = {'q': 'Queen', 'r': 'Rook', 'b': 'Bishop', 'n': 'Knight'}
 
-    def _draw_promo_dialog(self, hover: Optional[str],
-                           turn_color: str = "white"):
+    def _draw_promo_dialog(self, hover: Optional[str], turn_color: str = "white"):
         sq      = self.sq_size
         n       = len(PROMO_PIECES)
         box_w   = sq
@@ -162,14 +228,15 @@ class Renderer:
             bx  = start_x + i * box_w
             by  = start_y
             bg  = PROMO_HOVER if hover == piece else PROMO_BG
-            pygame.draw.rect(self.screen, bg,
-                             (bx, by, box_w, box_h), border_radius=6)
-            pygame.draw.rect(self.screen, PROMO_BDR,
-                             (bx, by, box_w, box_h), 2, border_radius=6)
-            lbl = self.font_promo.render(
-                self.PROMO_NAMES[piece], True, (40, 40, 40))
-            self.screen.blit(lbl,
-                (bx + (box_w - lbl.get_width()) // 2, by + sq + 4))
+            pygame.draw.rect(self.screen, bg,      (bx, by, box_w, box_h), border_radius=6)
+            pygame.draw.rect(self.screen, PROMO_BDR,(bx, by, box_w, box_h), 2, border_radius=6)
+            # Draw piece icon using the correct color (upper = white, lower = black)
+            icon_char = piece.upper() if turn_color == "white" else piece
+            icon = _make_piece_surface(icon_char, sq)
+            self.screen.blit(icon, (bx, by))
+            # Label
+            lbl = self.font_promo.render(self.PROMO_NAMES[piece], True, (40, 40, 40))
+            self.screen.blit(lbl, (bx + (box_w - lbl.get_width())//2, by + sq + 4))
 
     def promo_piece_at(self, px: int, py: int) -> Optional[str]:
         sq      = self.sq_size
@@ -185,6 +252,10 @@ class Renderer:
                 return piece
         return None
 
+    # ---------------------------------------------------------------- #
+    #  Game-over overlay                                                #
+    # ---------------------------------------------------------------- #
+
     def _draw_overlay(self, message: str):
         dim = pygame.Surface(
             (self.board_size, self.board_size + STATUS_HEIGHT), pygame.SRCALPHA)
@@ -197,7 +268,7 @@ class Renderer:
 
         for i, line in enumerate(lines):
             surf = self.font_overlay.render(line, True, OVERLAY_TXT)
-            x    = (self.board_size - surf.get_width()) // 2
+            x = (self.board_size - surf.get_width()) // 2
             self.screen.blit(surf, (x, start_y + i * 58))
 
         hint = self.font_coord.render(
