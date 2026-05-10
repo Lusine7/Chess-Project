@@ -18,9 +18,7 @@ from protocol import ChessProtocol
 from typing   import Optional
 import os, threading
 
-# ------------------------------------------------------------------ #
-#  Path to compiled binary                                             #
-# ------------------------------------------------------------------ #
+# Path to compiled binary 
 _HERE    = os.path.dirname(os.path.abspath(__file__))
 _BACKEND = os.path.join(_HERE, "..", "backend")
 
@@ -30,9 +28,7 @@ _BINARY_UNIX = os.path.join(_BACKEND, "chess")
 BINARY_PATH  = _BINARY_WIN if os.path.exists(_BINARY_WIN) else _BINARY_UNIX
 
 
-# ------------------------------------------------------------------ #
-#  Starting position — mirrors board_init() in the C backend           #
-# ------------------------------------------------------------------ #
+# Starting position — mirrors board_init() in the C backend 
 def _starting_board() -> list[list[str]]:
     """Return an 8×8 grid of piece characters (rank 0 = white's back rank)."""
     b: list[list[str]] = [[""] * 8 for _ in range(8)]
@@ -49,13 +45,15 @@ def _starting_board() -> list[list[str]]:
     return b
 
 
-# ------------------------------------------------------------------ #
-#  GameState                                                           #
-# ------------------------------------------------------------------ #
+# GameState 
 class GameState:
     """
-    Central game state.  The Renderer reads from this object;
+    Central game state. The Renderer reads from this object;
     the event loop calls methods on it.
+    
+    Think of GameState as the "brain" of the frontend: it remembers where 
+    pieces are, whose turn it is, and what's selected. When the player clicks, 
+    GameState decides what happens and asks the C engine if moves are valid.
 
     Parameters
     ----------
@@ -71,59 +69,59 @@ class GameState:
 
         self.board: list[list[str]] = _starting_board()
 
-        # --- UI state ---
+        # UI state 
         self.selected_sq:   Optional[tuple[int, int]] = None
         self.legal_dests:   list[tuple[int, int]]     = []
         self.last_move:     Optional[tuple[tuple[int, int], tuple[int, int]]] = None
         self.in_check_sq:   Optional[tuple[int, int]] = None
 
-        # --- Game metadata ---
+        # Game metadata 
         self.turn:        str = "white"   # "white" | "black"
         self.move_number: int = 1
         self.status_text: str = "White to move"
         self.game_over_msg: Optional[str] = None
 
-        # --- Promotion ---
+        # Promotion 
         self.promo_pending:   bool                    = False
         self.promo_from:      Optional[tuple[int, int]] = None
         self.promo_to:        Optional[tuple[int, int]] = None
 
-        # --- AI flags ---
+        # AI flags 
         self.ai_thinking:    bool = False
         self.needs_ai_move:  bool = (player_color == "black")  # AI goes first?
 
-    # ---------------------------------------------------------------- #
-    #  Public API called by the event loop                              #
-    # ---------------------------------------------------------------- #
-
+    # Public API called by the event loop 
     def click_square(self, rank: int, file: int) -> None:
         """Handle a click on the board (ignored when it's the AI's turn)."""
+        # Ignore clicks if the game is over, we're waiting for AI, or choosing promotion
         if self.game_over_msg or self.ai_thinking or self.promo_pending:
             return
+        # Ignore clicks if it's not the human's turn
         if self.turn != self.player_color:
             return
 
         piece = self.board[rank][file]
 
-        # ---- First click: select own piece ----
+        # State 1: We haven't selected a piece yet (First click)
         if self.selected_sq is None:
             if self._is_own_piece(piece):
-                self._select(rank, file)
+                self._select(rank, file) # Select our piece
             return
 
-        # ---- Second click ----
+        # State 2: We already have a piece selected (Second click)
         if (rank, file) == self.selected_sq:
-            # Clicked same square → deselect
+            # Clicked same square -> deselect (toggle selection off)
             self._deselect()
             return
 
         if (rank, file) in self.legal_dests:
-            # Valid destination → attempt move
+            # Valid destination - attempt move!
             self._try_move(self.selected_sq, (rank, file))
         elif self._is_own_piece(piece):
-            # Clicked a different own piece → re-select
+            # Clicked a different own piece - change selection
             self._select(rank, file)
         else:
+            # Clicked empty space or an enemy piece we can't capture - deselect
             self._deselect()
 
     def choose_promotion(self, piece_char: str) -> None:
@@ -164,13 +162,14 @@ class GameState:
         event loop keeps running (and can render a 'thinking' indicator)
         while the engine is searching.  Safe to call once per AI turn.
         """
+        # We run the AI in a separate "thread" so the game window doesn't freeze
+        # while the engine is thinking. A daemon thread means it will automatically
+        # stop if the main program closes, so we don't have to clean it up manually.
         self.ai_thinking = True
         threading.Thread(target=self._request_ai_move, daemon=True).start()
 
 
-    # ---------------------------------------------------------------- #
-    #  Internal helpers                                                  #
-    # ---------------------------------------------------------------- #
+    # Internal helpers 
 
     def _is_own_piece(self, piece: str) -> bool:
         if not piece:
@@ -235,26 +234,29 @@ class GameState:
         piece = self.board[fr][ff]
         ptype = piece.upper() if piece else ''
 
-        # En-passant capture: the captured pawn is on the same rank as fr
-        # but the same file as tf.  We detect it heuristically.
+        # En-passant is special: the captured pawn is NOT on the destination square.
+        # It's on the same rank as the moving pawn but the same file as the destination.
+        # We detect en-passant by checking: pawn moved diagonally onto an empty square.
         if ptype == 'P' and ff != tf and self.board[tr][tf] == '':
-            self.board[fr][tf] = ''   # remove captured pawn
+            self.board[fr][tf] = ''   # remove the captured pawn from beside our pawn
 
-        # Castling: move the rook
+        # Castling: when the king moves 2 squares, we also need to move the rook.
+        # The king goes from file 4 to file 6 (kingside) or file 2 (queenside).
         if ptype == 'K' and abs(tf - ff) == 2:
-            back = 0 if piece.isupper() else 7
-            if tf == 6:   # kingside
+            back = 0 if piece.isupper() else 7  # row 0 for white, row 7 for black
+            if tf == 6:   # kingside: rook moves from h-file (7) to f-file (5)
                 self.board[back][5] = self.board[back][7]
                 self.board[back][7] = ''
-            elif tf == 2: # queenside
+            elif tf == 2: # queenside: rook moves from a-file (0) to d-file (3)
                 self.board[back][3] = self.board[back][0]
                 self.board[back][0] = ''
 
-        # Move piece
+        # Move the piece to its destination and clear where it came from
         self.board[tr][tf] = piece
         self.board[fr][ff] = ''
 
-        # Promotion
+        # Promotion: replace the pawn with the chosen piece.
+        # We need to match the case: upper-case for white pieces, lower-case for black.
         if promo and ptype == 'P':
             promoted = promo.upper() if piece.isupper() else promo.lower()
             self.board[tr][tf] = promoted
@@ -267,7 +269,8 @@ class GameState:
 
         self.turn = turn
 
-        # Update king-in-check highlight
+        # If the king is in check or checkmated, we want to highlight its square in red.
+        # We scan the board to find where the king is right now.
         self.in_check_sq = None
         if state in ("check", "checkmate"):
             king = 'K' if turn == "white" else 'k'
@@ -276,11 +279,12 @@ class GameState:
                     if self.board[r][f] == king:
                         self.in_check_sq = (r, f)
 
-        # Move counter
+        # A full move is counted after both players move.
+        # We increment when it becomes white's turn again (i.e. after black just moved).
         if turn == "white":
             self.move_number += 1
 
-        # Status bar text
+        # Update the status bar text at the bottom of the window
         turn_cap = turn.capitalize()
         if state == "playing":
             self.status_text   = f"{turn_cap} to move  ·  Move {self.move_number}"
@@ -299,9 +303,7 @@ class GameState:
             self.status_text   = "Draw (50-move rule)"
             self.game_over_msg = "Draw!\n50-move rule"
 
-    # ---------------------------------------------------------------- #
-    #  Utilities                                                         #
-    # ---------------------------------------------------------------- #
+    # Utilities 
 
     @staticmethod
     def _sq_str(rank: int, file: int) -> str:

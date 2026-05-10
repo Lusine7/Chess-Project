@@ -3,7 +3,7 @@
 void board_init(Board *b) {
     memset(b->squares, 0, sizeof(b->squares));
 
-    /* White back rank (rank index 0 = chess rank 1) */
+    // White back rank (rank index 0 = chess rank 1)
     b->squares[0][0] =  ROOK;
     b->squares[0][1] =  KNIGHT;
     b->squares[0][2] =  BISHOP;
@@ -13,15 +13,15 @@ void board_init(Board *b) {
     b->squares[0][6] =  KNIGHT;
     b->squares[0][7] =  ROOK;
 
-    /* White pawns (rank index 1 = chess rank 2) */
+    // White pawns (rank index 1 = chess rank 2)
     for (int f = 0; f < 8; f++)
         b->squares[1][f] = PAWN;
 
-    /* Black pawns (rank index 6 = chess rank 7) */
+    // Black pawns (rank index 6 = chess rank 7)
     for (int f = 0; f < 8; f++)
         b->squares[6][f] = -PAWN;
 
-    /* Black back rank (rank index 7 = chess rank 8) */
+    // Black back rank (rank index 7 = chess rank 8)
     b->squares[7][0] = -ROOK;
     b->squares[7][1] = -KNIGHT;
     b->squares[7][2] = -BISHOP;
