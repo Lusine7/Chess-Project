@@ -415,7 +415,7 @@ static void test_ai_takes_free_queen(void) {
     b.squares[4][4] =  ROOK;   /* white rook on e5 */
     b.squares[4][3] = -QUEEN;  /* black queen on d5 */
 
-    ai_depth = 2;
+    ai_depth = 6;
     Move best;
     int found = find_best_move(&b, &best);
 
