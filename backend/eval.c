@@ -4,9 +4,12 @@
 /*  Material values (centipawns)                                        */
 /* ------------------------------------------------------------------ */
 static const int MAT[7] = {0, 100, 320, 330, 500, 900, 20000};
+/*                            P    N    B    R    Q     K        */
 
 /* ------------------------------------------------------------------ */
 /*  Piece-square tables  (from White's perspective)                     */
+/*  Indexed [rank][file] where rank 0 = White's back rank (rank 1).    */
+/*  For Black pieces we mirror the rank: pst_rank = 7 - rank.          */
 /* ------------------------------------------------------------------ */
 
 static const int PST_PAWN[8][8] = {
@@ -64,6 +67,7 @@ static const int PST_QUEEN[8][8] = {
     {-20,-10,-10, -5, -5,-10,-10,-20 },
 };
 
+/* King is rewarded for being tucked away (castled) in the middlegame */
 static const int PST_KING[8][8] = {
     { 20, 30, 10,  0,  0, 10, 30, 20 },
     { 20, 20,  0,  0,  0,  0, 20, 20 },
@@ -75,8 +79,13 @@ static const int PST_KING[8][8] = {
     {-30,-40,-40,-50,-50,-40,-40,-30 },
 };
 
+/* ------------------------------------------------------------------ */
+/*  PST lookup                                                          */
+/* ------------------------------------------------------------------ */
 static int pst_value(int type, int rank, int file, int color) {
+    /* Mirror rank for Black so both sides use the same table orientation */
     int r = (color == WHITE) ? rank : (7 - rank);
+
     switch (type) {
         case PAWN:   return PST_PAWN  [r][file];
         case KNIGHT: return PST_KNIGHT[r][file];
@@ -88,6 +97,9 @@ static int pst_value(int type, int rank, int file, int color) {
     }
 }
 
+/* ------------------------------------------------------------------ */
+/*  evaluate()                                                          */
+/* ------------------------------------------------------------------ */
 int evaluate(const Board *b) {
     int score = 0;
 
@@ -100,6 +112,7 @@ int evaluate(const Board *b) {
             int type  = board_type(piece);
             int val   = MAT[type] + pst_value(type, r, f, color);
 
+            /* White pieces add to score, Black pieces subtract */
             score += color * val;
         }
     }
