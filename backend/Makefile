@@ -19,7 +19,7 @@ test_c: test_chess
 
 # Python targets
 test_py:
-	python -m unittest test_protocol.py -v
+	cd ../frontend && python3 -m unittest test_protocol -v
 
 # Combined
 
