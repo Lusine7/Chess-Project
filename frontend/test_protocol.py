@@ -21,9 +21,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from protocol import ChessProtocol
 
 
-# ------------------------------------------------------------------ #
-#  Helper                                                             #
-# ------------------------------------------------------------------ #
+# Helper    
 
 def _make_protocol(responses: list) -> ChessProtocol:
     """
@@ -32,10 +30,18 @@ def _make_protocol(responses: list) -> ChessProtocol:
     `responses` is a list of strings the fake engine will return, one per
     readline() call (newline is added automatically).
     """
+    # MagicMock creates a fake object that pretends to be a real subprocess.
+    # We can control exactly what it returns when our code calls readline().
     mock_proc = MagicMock()
     mock_proc.stdin  = MagicMock()
+    
+    # side_effect means: every time readline() is called, return the next item in the list.
+    # We add "\n" because real stdout lines end with a newline.
     mock_proc.stdout.readline.side_effect = [r + "\n" for r in responses]
 
+    # patch() temporarily replaces real functions with fakes just for this setup.
+    # We fake os.path.exists so it looks like the binary exists,
+    # and we fake subprocess.Popen so it returns our mock process instead of launching a real one.
     with patch("os.path.exists", return_value=True), \
          patch("subprocess.Popen", return_value=mock_proc):
         proto = ChessProtocol("/fake/chess")
@@ -43,10 +49,7 @@ def _make_protocol(responses: list) -> ChessProtocol:
     return proto
 
 
-# ================================================================== #
-#  __init__                                                           #
-# ================================================================== #
-
+#  __init__ 
 class TestInit(unittest.TestCase):
 
     def test_raises_when_binary_missing(self):
@@ -66,9 +69,7 @@ class TestInit(unittest.TestCase):
             self.assertEqual(args[0], ["/my/chess"])
 
 
-# ================================================================== #
-#  init()                                                             #
-# ================================================================== #
+# init() 
 
 class TestInitCommand(unittest.TestCase):
 
@@ -86,9 +87,7 @@ class TestInitCommand(unittest.TestCase):
         proto.proc.stdin.write.assert_called_with("INIT\n")
 
 
-# ================================================================== #
-#  set_depth()                                                        #
-# ================================================================== #
+# set_depth() 
 
 class TestSetDepth(unittest.TestCase):
 
@@ -111,9 +110,7 @@ class TestSetDepth(unittest.TestCase):
         proto.proc.stdin.write.assert_called_with("DEPTH 2\n")
 
 
-# ================================================================== #
-#  get_moves()                                                        #
-# ================================================================== #
+# get_moves() 
 
 class TestGetMoves(unittest.TestCase):
 
@@ -140,9 +137,7 @@ class TestGetMoves(unittest.TestCase):
         proto.proc.stdin.write.assert_called_with("MOVES d3\n")
 
 
-# ================================================================== #
-#  make_move()                                                        #
-# ================================================================== #
+# make_move() 
 
 class TestMakeMove(unittest.TestCase):
 
@@ -181,9 +176,7 @@ class TestMakeMove(unittest.TestCase):
             proto.proc.stdin.write.assert_called_with(f"MOVE a7a8{piece}\n")
 
 
-# ================================================================== #
-#  ai_move()                                                          #
-# ================================================================== #
+# ai_move() 
 
 class TestAiMove(unittest.TestCase):
 
@@ -223,9 +216,7 @@ class TestAiMove(unittest.TestCase):
         proto.proc.stdin.write.assert_called_with("AI_MOVE\n")
 
 
-# ================================================================== #
-#  status()                                                           #
-# ================================================================== #
+# status() 
 
 class TestStatus(unittest.TestCase):
 
@@ -270,12 +261,7 @@ class TestStatus(unittest.TestCase):
         proto = _make_protocol(["STATUS white playing"])
         proto.status()
         proto.proc.stdin.write.assert_called_with("STATUS\n")
-
-
-# ================================================================== #
-#  quit()                                                             #
-# ================================================================== #
-
+# quit() 
 class TestQuit(unittest.TestCase):
 
     def test_sends_quit_command(self):
@@ -297,11 +283,6 @@ class TestQuit(unittest.TestCase):
         proto = _make_protocol(["OK"])
         proto.quit()
         proto.proc.terminate.assert_called_once()
-
-
-# ================================================================== #
-#  Entry point                                                        #
-# ================================================================== #
-
+# Entry point 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

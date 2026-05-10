@@ -7,9 +7,7 @@ import os
 import pygame
 from typing import Optional
 
-# ------------------------------------------------------------------ #
-#  Piece image loading (module-level, initialised once)               #
-# ------------------------------------------------------------------ #
+# Piece image loading (module-level, initialised once) 
 _PIECE_IMAGES: dict = {}   # piece_char -> raw Surface (original size)
 _IMAGES_LOADED = False
 
@@ -45,9 +43,7 @@ def _load_piece_images() -> None:
             except Exception:
                 pass  # silently fall back to primitive drawing
 
-# ------------------------------------------------------------------ #
-#  Colour palette                                                      #
-# ------------------------------------------------------------------ #
+#  Colour palette                                                       
 LIGHT_SQ   = (240, 217, 181)
 DARK_SQ    = (181, 136,  99)
 SEL_COL    = (106, 168,  79, 160)
@@ -81,9 +77,7 @@ def _make_piece_surface(piece_char: str, sq: int) -> pygame.Surface:
     return surf
 
 
-# ================================================================== #
-#  Renderer                                                            #
-# ================================================================== #
+# Renderer 
 
 class Renderer:
     def __init__(self, screen: pygame.Surface, board_size: int, flipped: bool = False):
@@ -102,16 +96,15 @@ class Renderer:
         self.font_overlay= pygame.font.SysFont("sans",      44, bold=True)
         self.font_promo  = pygame.font.SysFont("sans",      18, bold=True)
 
-    # ---------------------------------------------------------------- #
-    #  Coordinate helpers                                               #
-    # ---------------------------------------------------------------- #
+    # Coordinate helpers 
 
     def sq_to_px(self, rank: int, file: int):
+        # Convert chess coordinates (rank, file) to screen pixel coordinates (x, y)
         if self.flipped:
-            # Black at bottom: rank 7 → row 0, file 7 → col 0
+            # Black at bottom: rank 7 (8th rank) is at the top (row 0), file 7 is at the left
             return (7 - file) * self.sq_size, rank * self.sq_size
         else:
-            # White at bottom: rank 0 → row 7, file 0 → col 0
+            # White at bottom: rank 0 (1st rank) is at the bottom (row 7), file 0 is at the left
             return file * self.sq_size, (7 - rank) * self.sq_size
 
     def px_to_sq(self, px: int, py: int) -> Optional[tuple]:
@@ -122,9 +115,7 @@ class Renderer:
         else:
             return 7 - py // self.sq_size, px // self.sq_size
 
-    # ---------------------------------------------------------------- #
-    #  Main draw                                                        #
-    # ---------------------------------------------------------------- #
+    # Main draw 
 
     def draw(self, board_state, selected_sq, legal_dests, last_move,
              in_check_sq, status_text, turn_color, game_over,
@@ -137,9 +128,7 @@ class Renderer:
         elif game_over:
             self._draw_overlay(game_over)
 
-    # ---------------------------------------------------------------- #
-    #  Board                                                            #
-    # ---------------------------------------------------------------- #
+    # Board 
 
     def _draw_board(self, board_state, selected_sq, legal_dests,
                     last_move, in_check_sq):
@@ -194,9 +183,7 @@ class Renderer:
             rk = self.font_coord.render(rank_num, True, (80, 80, 80))
             self.screen.blit(rk, (3, i*sq + 3))
 
-    # ---------------------------------------------------------------- #
-    #  Status bar                                                       #
-    # ---------------------------------------------------------------- #
+    # Status bar 
 
     def _draw_status_bar(self, status_text: str):
         bar_y = self.board_size
@@ -205,9 +192,7 @@ class Renderer:
         txt = self.font_status.render(status_text, True, TEXT_STATUS)
         self.screen.blit(txt, (12, bar_y + (STATUS_HEIGHT - txt.get_height()) // 2))
 
-    # ---------------------------------------------------------------- #
-    #  Promotion dialog                                                 #
-    # ---------------------------------------------------------------- #
+    #  Promotion dialog                                                 
 
     PROMO_NAMES = {'q': 'Queen', 'r': 'Rook', 'b': 'Bishop', 'n': 'Knight'}
 
@@ -251,11 +236,7 @@ class Renderer:
             if bx <= px < bx + box_w and by <= py < by + box_h:
                 return piece
         return None
-
-    # ---------------------------------------------------------------- #
-    #  Game-over overlay                                                #
-    # ---------------------------------------------------------------- #
-
+    # Game-over overlay 
     def _draw_overlay(self, message: str):
         dim = pygame.Surface(
             (self.board_size, self.board_size + STATUS_HEIGHT), pygame.SRCALPHA)

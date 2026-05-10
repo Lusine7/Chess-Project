@@ -22,9 +22,7 @@ import pygame
 from renderer import Renderer, STATUS_HEIGHT
 from game     import GameState
 
-# ------------------------------------------------------------------ #
-#  Window configuration                                                #
-# ------------------------------------------------------------------ #
+# Window configuration 
 BOARD_SIZE   = 640
 WINDOW_W     = BOARD_SIZE
 WINDOW_H     = BOARD_SIZE + STATUS_HEIGHT  # used in set_mode and run_setup_screen
@@ -32,11 +30,10 @@ FPS          = 60
 WINDOW_TITLE = "Chess"
 
 
-# ------------------------------------------------------------------ #
-#  SetupScreen                                                         #
-# ------------------------------------------------------------------ #
-
+# SetupScreen 
 def run_setup_screen(screen: pygame.Surface, clock: pygame.time.Clock):
+    # This is a mini "game loop" just for the initial setup menu.
+    # It loops until the user clicks "Start Game", returning their choices.
     pygame.display.set_caption("Chess - Setup")
     font = pygame.font.SysFont("sans", 18)
 
@@ -97,10 +94,10 @@ def run_setup_screen(screen: pygame.Surface, clock: pygame.time.Clock):
                 if start_rect.collidepoint(mx, my):
                     return selected_color, selected_depth
 
-        # ---- Draw -----------------------------------------------
+        # Draw 
         screen.fill((30, 30, 30))
 
-        # Title
+        # Title 
         title = font.render("CHESS", True, (220, 220, 220))
         screen.blit(title, (cx - title.get_width() // 2, 140))
 
@@ -131,9 +128,7 @@ def run_setup_screen(screen: pygame.Surface, clock: pygame.time.Clock):
 
 
 
-# ------------------------------------------------------------------ #
-#  main                                                                #
-# ------------------------------------------------------------------ #
+# main 
 
 def main() -> None:
     pygame.init()
@@ -147,8 +142,10 @@ def main() -> None:
     game        = GameState(player_color=player_color, depth=depth)
     promo_hover: str | None = None
 
+    # The Main Game Loop! Runs continuously (FPS times a second)
     running = True
     while running:
+        # 1. Process Events (mouse clicks, keyboard presses, quitting)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -183,16 +180,22 @@ def main() -> None:
                 else:
                     promo_hover = None
 
+        # 2. Game Logic / AI Trigger
+        # If it's the AI's turn, tell it to start thinking in the background
         if (game.needs_ai_move and not game.ai_thinking
                 and not game.game_over_msg):
             game.start_ai_move_async()
 
+        # 3. Render graphics
+        # Clear the screen with a dark grey color
         screen.fill((20, 20, 20))
 
+        # Little text animation for "AI is thinking..."
         dots        = "." * (int(_time.time() * 2) % 4)
         status_text = (f"AI is thinking{dots}"
                        if game.ai_thinking else game.status_text)
 
+        # Tell the renderer to draw all the visual elements (board, pieces, etc.)
         renderer.draw(
             board_state   = game.board,
             selected_sq   = game.selected_sq,

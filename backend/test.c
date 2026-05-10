@@ -1,11 +1,10 @@
-/*
- * test_chess.c — lightweight regression tests for the chess engine.
- *
- * Compile alongside the engine sources:
- *   gcc -std=c11 -O2 -o test_chess board.c moves.c eval.c ai.c test_chess.c
- * Run:
- *   ./test_chess
- */
+// test_chess.c — lightweight regression tests for the chess engine.
+
+// Compile alongside the engine sources:
+//   gcc -std=c11 -O2 -o test_chess board.c moves.c eval.c ai.c test_chess.c
+// Run:
+//   ./test_chess
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,13 +14,14 @@
 #include "moves.h"
 #include "eval.h"
 
-/* ------------------------------------------------------------------ */
-/*  Tiny test harness                                                   */
-/* ------------------------------------------------------------------ */
+// Tiny test harness 
 
 static int tests_run    = 0;
 static int tests_passed = 0;
 
+// A simple custom assert macro for our tests.
+// If the condition (cond) is true, the test passes.
+// If it's false, it prints a failure message including the function name and line number.
 #define ASSERT(cond, msg)                                        \
     do {                                                         \
         tests_run++;                                             \
@@ -33,9 +33,7 @@ static int tests_passed = 0;
         }                                                        \
     } while (0)
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                             */
-/* ------------------------------------------------------------------ */
+// Helpers 
 
 static Move find_move(Board *b, const char *from, const char *to) {
     Move moves[MAX_MOVES];
@@ -56,9 +54,7 @@ static int move_count(Board *b) {
     return generate_legal_moves(b, moves);
 }
 
-/* ------------------------------------------------------------------ */
-/*  Tests                                                               */
-/* ------------------------------------------------------------------ */
+//Tests 
 
 static void test_initial_move_count(void) {
     Board b;
@@ -80,18 +76,18 @@ static void test_pawn_push(void) {
 static void test_ep_clock_reset(void) {
     Board b;
     board_init(&b);
-    /* e4 */
+    // e4 
     Move m = find_move(&b, "e2", "e4");
     apply_move(&b, &m);
-    /* e5 */
+    // e5 
     m = find_move(&b, "e7", "e5");
     apply_move(&b, &m);
-    /* d4 */
+    // d4 
     m = find_move(&b, "d2", "d4");
     apply_move(&b, &m);
-    /* exd3 en passant */
+    // exd3 en passant 
     m = find_move(&b, "e5", "d4");
-    /* just check d4 pawn capture is legal */
+    // just check d4 pawn capture is legal 
     ASSERT(m.from_rank != -1, "exd4 capture should be legal");
 }
 
@@ -111,15 +107,16 @@ static void test_evaluate_start_is_zero(void) {
 static void test_evaluate_after_capture(void) {
     Board b;
     board_init(&b);
-    /* Remove white queen manually */
+    // Remove white queen manually 
     b.squares[0][3] = EMPTY;
     int score = evaluate(&b);
     ASSERT(score < 0, "Score should be negative when white queen removed");
 }
 
-/* ------------------------------------------------------------------ */
-/*  main                                                                */
-/* ------------------------------------------------------------------ */
+
+// main  
+// Runs all the test functions and prints the final score.
+// Returns 0 if all tests pass (which tells the OS the program succeeded).
 
 int main(void) {
     test_initial_move_count();

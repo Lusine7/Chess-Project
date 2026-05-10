@@ -1,16 +1,14 @@
 #include "eval.h"
 
-/* ------------------------------------------------------------------ */
-/*  Material values (centipawns)                                        */
-/* ------------------------------------------------------------------ */
+// Material values (centipawns)
 static const int MAT[7] = {0, 100, 320, 330, 500, 900, 20000};
-/*                            P    N    B    R    Q     K        */
+// P    N    B    R    Q     K 
 
-/* ------------------------------------------------------------------ */
-/*  Piece-square tables  (from White's perspective)                     */
-/*  Indexed [rank][file] where rank 0 = White's back rank (rank 1).    */
-/*  For Black pieces we mirror the rank: pst_rank = 7 - rank.          */
-/* ------------------------------------------------------------------ */
+// Piece-square tables (from White's perspective) 
+// These tables tell us how "good" a square is for a specific piece.
+// For example, knights are stronger in the center, so their table has higher values there.
+// Indexed [rank][file] where rank 0 = White's back rank (rank 1). 
+// For Black pieces we mirror the rank: pst_rank = 7 - rank.
 
 static const int PST_PAWN[8][8] = {
     {  0,  0,  0,  0,  0,  0,  0,  0 },
@@ -67,7 +65,7 @@ static const int PST_QUEEN[8][8] = {
     {-20,-10,-10, -5, -5,-10,-10,-20 },
 };
 
-/* King is rewarded for being tucked away (castled) in the middlegame */
+// King is rewarded for being tucked away (castled) in the middlegame 
 static const int PST_KING[8][8] = {
     { 20, 30, 10,  0,  0, 10, 30, 20 },
     { 20, 20,  0,  0,  0,  0, 20, 20 },
@@ -79,11 +77,9 @@ static const int PST_KING[8][8] = {
     {-30,-40,-40,-50,-50,-40,-40,-30 },
 };
 
-/* ------------------------------------------------------------------ */
-/*  PST lookup                                                          */
-/* ------------------------------------------------------------------ */
+// PST lookup
 static int pst_value(int type, int rank, int file, int color) {
-    /* Mirror rank for Black so both sides use the same table orientation */
+    // Mirror rank for Black so both sides use the same table orientation
     int r = (color == WHITE) ? rank : (7 - rank);
 
     switch (type) {
@@ -97,22 +93,27 @@ static int pst_value(int type, int rank, int file, int color) {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*  evaluate()                                                          */
-/* ------------------------------------------------------------------ */
+// evaluate() function
+// Evaluates the current board position and returns a score.
+// A positive score means White is winning, a negative score means Black is winning.
 int evaluate(const Board *b) {
     int score = 0;
 
     for (int r = 0; r < 8; r++) {
         for (int f = 0; f < 8; f++) {
             int piece = b->squares[r][f];
-            if (piece == EMPTY) continue;
+            if (piece == EMPTY) continue; // Skip empty squares, nothing to evaluate here
 
             int color = board_color(piece);
             int type  = board_type(piece);
+            
+            // A piece's value is its base material value (e.g. 900 for Queen)
+            // PLUS its positional value from the piece-square table (is it on a good square?)
             int val   = MAT[type] + pst_value(type, r, f, color);
 
-            /* White pieces add to score, Black pieces subtract */
+            // White pieces add to score (White wants a higher positive score)
+            // Black pieces subtract from score (Black wants a lower negative score)
+            // By multiplying with color (1 for White, -1 for Black), we get the correct sign!
             score += color * val;
         }
     }

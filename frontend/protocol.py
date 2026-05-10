@@ -11,11 +11,15 @@ import os
 
 class ChessProtocol:
     def __init__(self, binary_path: str):
+        # Check if the C backend has been compiled first
         if not os.path.exists(binary_path):
             raise FileNotFoundError(
                 f"Chess binary not found at '{binary_path}'.\n"
                 "Run:  cd backend && make"
             )
+        # We start the C engine as a background process (subprocess).
+        # We use pipes so Python can talk to the C engine's standard input (stdin)
+        # and listen to its standard output (stdout).
         self.proc = subprocess.Popen(
             [binary_path],
             stdin=subprocess.PIPE,
@@ -26,8 +30,11 @@ class ChessProtocol:
         )
 
     def _send(self, command: str) -> str:
+        # Send a text command to the C engine and press "Enter" (\n)
         self.proc.stdin.write(command + "\n")
-        self.proc.stdin.flush()
+        self.proc.stdin.flush() # Make sure it sends immediately
+        
+        # Wait for the engine to reply with a single line of text
         reply = self.proc.stdout.readline()
         return reply.strip()
 
