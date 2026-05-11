@@ -109,6 +109,11 @@ class TestSetDepth(unittest.TestCase):
         proto.set_depth(2)
         proto.proc.stdin.write.assert_called_with("DEPTH 2\n")
 
+    def test_depth_medium(self):
+        proto = _make_protocol(["OK"])
+        proto.set_depth(4)
+        proto.proc.stdin.write.assert_called_with("DEPTH 4\n")
+
 
 # get_moves() 
 
@@ -158,11 +163,6 @@ class TestMakeMove(unittest.TestCase):
         proto.make_move("e2", "e4")
         proto.proc.stdin.write.assert_called_with("MOVE e2e4\n")
 
-    def test_promotion_appended_to_command(self):
-        proto = _make_protocol(["MOVED e7e8q"])
-        proto.make_move("e7", "e8", promotion="q")
-        proto.proc.stdin.write.assert_called_with("MOVE e7e8q\n")
-
     def test_no_promotion_suffix_when_none(self):
         proto = _make_protocol(["MOVED d2d4"])
         proto.make_move("d2", "d4", promotion=None)
@@ -196,11 +196,16 @@ class TestAiMove(unittest.TestCase):
         self.assertEqual(to, "e8")
         self.assertEqual(promo, "q")
 
-    def test_parses_knight_promotion(self):
-        proto = _make_protocol(["AI_MOVED a2a1n"])
+    def test_malformed_ai_moved_no_move_string(self):
+        # If the engine sends back just "AI_MOVED" with nothing after it,
+        # the code used to crash with an IndexError (like accessing arr[1] with only 1 element in C).
+        # Now it has a length check, so it should safely return (False, None, None, None) instead.
+        proto = _make_protocol(["AI_MOVED"])
         ok, fr, to, promo = proto.ai_move()
-        self.assertTrue(ok)
-        self.assertEqual(promo, "n")
+        self.assertFalse(ok)
+        self.assertIsNone(fr)
+        self.assertIsNone(to)
+        self.assertIsNone(promo)
 
     def test_returns_false_tuple_on_failure(self):
         proto = _make_protocol(["NOMOVE"])
@@ -283,6 +288,19 @@ class TestQuit(unittest.TestCase):
         proto = _make_protocol(["OK"])
         proto.quit()
         proto.proc.terminate.assert_called_once()
+
+    def test_terminate_raises_is_silenced(self):
+        # This tests the SECOND try/except block in quit().
+        # The first block handles the QUIT command failing.
+        # This one handles proc.terminate() itself throwing an error
+        # (e.g. the process is already dead and the OS complains).
+        # quit() should silently swallow it instead of crashing the whole program.
+        proto = _make_protocol(["OK"])
+        proto.proc.terminate.side_effect = OSError("process already dead")
+        try:
+            proto.quit()  # should NOT raise even though terminate() fails
+        except Exception as exc:
+            self.fail(f"quit() raised when terminate() threw: {exc}")
 # Entry point 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

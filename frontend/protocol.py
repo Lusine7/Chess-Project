@@ -61,6 +61,11 @@ class ChessProtocol:
         reply = self._send("AI_MOVE")
         if reply.startswith("AI_MOVED"):
             parts = reply.split()
+            # Safety check: if the engine sends "AI_MOVED" with no move after it,
+            # parts would only have 1 element and parts[1] would crash.
+            # This is like checking a pointer is not NULL before dereferencing it.
+            if len(parts) < 2:
+                return False, None, None, None
             move  = parts[1]
             from_sq = move[:2]
             to_sq   = move[2:4]
