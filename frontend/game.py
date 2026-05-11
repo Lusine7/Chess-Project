@@ -295,7 +295,7 @@ class GameState:
         elif state == "checkmate":
             winner = "Black" if turn == "white" else "White"
             self.status_text   = "Checkmate!"
-            self.game_over_msg = f"Checkmate!\n{winner} wins 🏆"
+            self.game_over_msg = f"Checkmate!\n{winner} wins!"
         elif state == "stalemate":
             self.status_text   = "Stalemate — draw"
             self.game_over_msg = "Stalemate!\nIt's a draw"
