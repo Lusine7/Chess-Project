@@ -9,9 +9,6 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Assets (large PNGs tracked separately)
-frontend/assets/pieces/
-
 # Editor
 .vscode/
 .idea/
