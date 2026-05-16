@@ -91,7 +91,7 @@ Everything is mouse-driven:
 |--------|--------|
 | Click one of your pieces | It gets selected. Green dots appear on every square that piece can legally move to. |
 | Click a green dot (highlighted square) | The piece moves there. |
-| Click the same piece again | Deselects it (cancels the selection). |
+| Click the same piece again or anywhere else on the board | Deselects it (cancels the selection). |
 | Click a different one of your own pieces | Switches selection to that piece instead. |
 
 The AI automatically makes its move after yours. You don't need to press anything — just wait.

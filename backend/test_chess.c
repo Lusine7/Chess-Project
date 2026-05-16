@@ -267,6 +267,29 @@ static void test_apply_move_castling_kingside(void) {
     assert_test(b.squares[0][7] == EMPTY, "h1 rook should have moved away");
 }
 
+static void test_apply_move_promotion(void) {
+    /* White pawn on a7 moves to a8 and promotes to Queen */
+    Board b;
+    memset(&b, 0, sizeof(b));
+    b.turn = WHITE;
+    b.ep_rank = -1;
+    b.ep_file = -1;
+    b.squares[6][0] = PAWN;   /* white pawn on a7 */
+    b.squares[7][4] = -KING;  /* black king on e8 */
+    b.squares[0][4] = KING;   /* white king on e1 */
+
+    Move m = find_move(&b, "a7", "a8");
+    assert_test(m.from_rank != -1, "White pawn should be able to move to a8");
+    
+    /* Manually set promotion to QUEEN as find_move returns the first legal move, 
+       and generate_legal_moves produces 4 moves for a promotion (Q, R, B, N). */
+    m.promotion = QUEEN;
+
+    apply_move(&b, &m);
+    assert_test(b.squares[7][0] == QUEEN, "a8 should contain a white Queen after promotion");
+    assert_test(b.squares[6][0] == EMPTY, "a7 should be empty after promotion");
+}
+
 /* ------------------------------------------------------------------ */
 /*  is_attacked and is_in_check tests                                   */
 /* ------------------------------------------------------------------ */
@@ -473,6 +496,7 @@ int main(void) {
     test_apply_move_turn_changes();
     test_apply_move_capture();
     test_apply_move_castling_kingside();
+    test_apply_move_promotion();
 
     // is_attacked / is_in_check
     test_is_attacked_by_rook();
